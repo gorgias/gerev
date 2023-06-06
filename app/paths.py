@@ -8,7 +8,13 @@ if os.name == 'nt':
 else:
     STORAGE_PATH = Path('/opt/storage/') if IS_IN_DOCKER else Path(f'/home/{os.getlogin()}/.gerev/storage/')
 
-if not STORAGE_PATH.exists():
+try:
+    STORAGE_PATH_EXISTS = STORAGE_PATH.exists()
+except PermissionError:
+    STORAGE_PATH = Path(f'home/{os.getlogin()}/.gerev/storage/') # remove leading /
+    STORAGE_PATH_EXISTS = STORAGE_PATH.exists()
+
+if not STORAGE_PATH_EXISTS:
     STORAGE_PATH.mkdir(parents=True)
 
 UI_PATH = Path('/ui/') if IS_IN_DOCKER else Path('../ui/build/')
