@@ -16,6 +16,7 @@ fastapi-restful
 google-api-python-client
 google-auth-httplib2
 google-auth-oauthlib
+greenlet # needed to run on mac m1
 oauth2client
 mammoth
 python-pptx

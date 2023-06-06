@@ -29,6 +29,7 @@ class SlackAuthor:
 
 class SlackConfig(BaseDataSourceConfig):
     token: str
+    filters: str
 
 
 class SlackDataSource(BaseDataSource):
@@ -36,7 +37,10 @@ class SlackDataSource(BaseDataSource):
 
     @staticmethod
     def get_config_fields() -> List[ConfigField]:
-        return [ConfigField(label="Bot User OAuth Token", name="token", type=HTMLInputType.PASSWORD), ConfigField(label="Limits results to channels names containing these comma separated filters", name="filters", type=HTMLInputType.TEXT)]
+        return [
+            ConfigField(label="Bot User OAuth Token", name="token", type=HTMLInputType.PASSWORD),
+            ConfigField(label="Channel name filters", name="filters", type=HTMLInputType.TEXT),
+        ]
 
     @staticmethod
     async def validate_config(config: Dict) -> None:
@@ -52,12 +56,18 @@ class SlackDataSource(BaseDataSource):
         super().__init__(*args, **kwargs)
         slack_config = SlackConfig(**self._raw_config)
         self._slack = WebClient(token=slack_config.token)
-        self.filters = [_filter.strip() for _filter in slack_config.filters.split(',')] if slack_config.filters else []
+        self.filters = [_filter.strip() for _filter in slack_config.filters.split(",")] if slack_config.filters else []
         self._authors_cache: Dict[str, SlackAuthor] = {}
 
     def _list_conversations(self) -> List[SlackConversation]:
         conversations = self._slack.conversations_list(exclude_archived=True, limit=1000)
-        return [SlackConversation(id=conv["id"], name=conv["name"]) for conv in conversations["channels"] if any([_filter in conv['name'] for _filter in self.filters])]
+        filtered_conversations = [
+            SlackConversation(id=conv["id"], name=conv["name"])
+            for conv in conversations["channels"]
+            if any([_filter in conv["name"] for _filter in self.filters])
+        ]
+        logger.info(f"Found {len(filtered_conversations)} conversations after filtering")
+        return filtered_conversations
 
     def _feed_conversations(self, conversations: List[SlackConversation]) -> List[SlackConversation]:
         joined_conversations = []
