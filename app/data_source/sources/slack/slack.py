@@ -72,11 +72,15 @@ class SlackDataSource(BaseDataSource):
             all_conversations.extend(
                 [SlackConversation(id=conv["id"], name=conv["name"]) for conv in conversations["channels"]]
             )
-        filtered_conversations = [
-            conv for conv in all_conversations if any([_filter in conv.name for _filter in self.filters])
-        ]
-        logger.info(f"Found {len(filtered_conversations)} conversations after filtering")
-        return filtered_conversations
+        logger.info(f"Found {len(all_conversations)} conversations")
+        if self.filters:
+            filtered_conversations = [
+                conv for conv in all_conversations if any([_filter in conv.name for _filter in self.filters])
+            ]
+            logger.info(f"Found {len(filtered_conversations)} conversations after filtering")
+            return filtered_conversations
+        else:
+            return all_conversations
 
     def _feed_conversations(self, conversations: List[SlackConversation]) -> List[SlackConversation]:
         joined_conversations = []
