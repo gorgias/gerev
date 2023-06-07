@@ -60,11 +60,20 @@ class SlackDataSource(BaseDataSource):
         self._authors_cache: Dict[str, SlackAuthor] = {}
 
     def _list_conversations(self) -> List[SlackConversation]:
+        all_conversations = []
         conversations = self._slack.conversations_list(exclude_archived=True, limit=1000)
+        all_conversations.extend(
+            [SlackConversation(id=conv["id"], name=conv["name"]) for conv in conversations["channels"]]
+        )
+        while conversations["response_metadata"]["next_cursor"]:
+            conversations = self._slack.conversations_list(
+                exclude_archived=True, limit=1000, cursor=conversations["response_metadata"]["next_cursor"]
+            )
+            all_conversations.extend(
+                [SlackConversation(id=conv["id"], name=conv["name"]) for conv in conversations["channels"]]
+            )
         filtered_conversations = [
-            SlackConversation(id=conv["id"], name=conv["name"])
-            for conv in conversations["channels"]
-            if any([_filter in conv["name"] for _filter in self.filters])
+            conv for conv in all_conversations if any([_filter in conv.name for _filter in self.filters])
         ]
         logger.info(f"Found {len(filtered_conversations)} conversations after filtering")
         return filtered_conversations
