@@ -355,8 +355,8 @@ export default class DataSourcePanel extends React.Component<DataSourcePanelProp
                                        <img alt="" className="h-[120px] rounded-xl p-1" src={CopyThis} />
                                     </span>
                                     <span className="text-violet-300/[.75] mt-1 text-sm"> *Gerev bot will join your channels.</span>
-                                    <span>6. {"(Optional) Add filters to limit the channels to fetch. The data source will only look for channels containing the filter you input."}</span>
-                                    <span>{'Example: adding "errors" to the filters will cause Gerev to index only the channles containg "errors"'}</span>
+                                    <span>6. {"(Optional) Add filters to limit the channels to fetch. Gerev will only look for messages in the channels containing the filters you input."}</span>
+                                    <span className="text-violet-300/[.75] mt-1 text-sm">{'Example: setting "errors, operations" in the filters field will cause Gerev to index only the channels containg "errors" and "operations"'}</span>
                                  </span>
                               )
                               }
