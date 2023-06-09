@@ -108,6 +108,19 @@ class NotionClient:
             results.extend(response.json()["results"])
         return results
 
+    def list_database_pages(self, database_id: str):
+        url = f"{self.api_url}/databases/{database_id}/query"
+        filter_data = {"page_size": 100}
+        response = self.session.post(url, json=filter_data)
+        results = response.json()["results"]
+        while response.json()["has_more"] is True:
+            response = self.session.post(
+                url,
+                json={"start_cursor": response.json()["next_cursor"], **filter_data},
+            )
+            results.extend(response.json()["results"])
+        return results
+
 
 class NotionConfig(BaseDataSourceConfig):
     token: str
@@ -188,7 +201,22 @@ class NotionDataSource(BaseDataSource):
         }
 
     def _feed_new_documents(self) -> None:
-        pages = self._notion_client.list_pages()
+        logger.info("Fetching non database pages ...")
+        single_pages = self._notion_client.list_pages()
+        logger.info(f"Found {len(single_pages)} non database pages ...")
+
+        logger.info("Fetching databases ...")
+        databases = self._notion_client.list_databases()
+        logger.info(f"Found {len(databases)} databases ...")
+
+        database_pages = []
+        for database in databases:
+            database_pages = self._notion_client.list_database_pages(database["id"])
+            database_pages.extend(database_pages)
+
+        pages = list(set(single_pages + database_pages))
+        logger.info(f"Found {len(pages)} pages in total ...")
+
         for page in pages:
             last_updated_at = datetime.strptime(page["last_edited_time"], "%Y-%m-%dT%H:%M:%S.%fZ")
             if last_updated_at < self._last_index_time:
