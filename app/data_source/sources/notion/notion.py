@@ -110,7 +110,7 @@ class NotionClient:
 
     def list_database_pages(self, database_id: str):
         url = f"{self.api_url}/databases/{database_id}/query"
-        filter_data = {"page_size": 100}
+        filter_data = {"page_size": 50}  # Going higher can cause the API to bug
         response = self.session.post(url, json=filter_data)
         results = response.json()["results"]
         while response.json()["has_more"] is True:
