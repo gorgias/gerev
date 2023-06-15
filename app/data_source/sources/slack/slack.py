@@ -29,6 +29,7 @@ class SlackAuthor:
 
 class SlackConfig(BaseDataSourceConfig):
     token: str
+    filters: str
 
 
 class SlackDataSource(BaseDataSource):
@@ -36,7 +37,10 @@ class SlackDataSource(BaseDataSource):
 
     @staticmethod
     def get_config_fields() -> List[ConfigField]:
-        return [ConfigField(label="Bot User OAuth Token", name="token", type=HTMLInputType.PASSWORD)]
+        return [
+            ConfigField(label="Bot User OAuth Token", name="token", type=HTMLInputType.PASSWORD),
+            ConfigField(label="Channel name filters", name="filters", type=HTMLInputType.TEXT),
+        ]
 
     @staticmethod
     async def validate_config(config: Dict) -> None:
@@ -52,11 +56,31 @@ class SlackDataSource(BaseDataSource):
         super().__init__(*args, **kwargs)
         slack_config = SlackConfig(**self._raw_config)
         self._slack = WebClient(token=slack_config.token)
+        self.filters = [_filter.strip() for _filter in slack_config.filters.split(",")] if slack_config.filters else []
         self._authors_cache: Dict[str, SlackAuthor] = {}
 
     def _list_conversations(self) -> List[SlackConversation]:
+        all_conversations = []
         conversations = self._slack.conversations_list(exclude_archived=True, limit=1000)
-        return [SlackConversation(id=conv["id"], name=conv["name"]) for conv in conversations["channels"]]
+        all_conversations.extend(
+            [SlackConversation(id=conv["id"], name=conv["name"]) for conv in conversations["channels"]]
+        )
+        while conversations["response_metadata"]["next_cursor"]:
+            conversations = self._slack.conversations_list(
+                exclude_archived=True, limit=1000, cursor=conversations["response_metadata"]["next_cursor"]
+            )
+            all_conversations.extend(
+                [SlackConversation(id=conv["id"], name=conv["name"]) for conv in conversations["channels"]]
+            )
+        logger.info(f"Found {len(all_conversations)} conversations")
+        if self.filters:
+            filtered_conversations = [
+                conv for conv in all_conversations if any([_filter in conv.name for _filter in self.filters])
+            ]
+            logger.info(f"Found {len(filtered_conversations)} conversations after filtering")
+            return filtered_conversations
+        else:
+            return all_conversations
 
     def _feed_conversations(self, conversations: List[SlackConversation]) -> List[SlackConversation]:
         joined_conversations = []
